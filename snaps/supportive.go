@@ -1,11 +1,7 @@
 package snaps
 
 import (
-	"flag"
-	"fmt"
 	"github.com/gkampitakis/go-snaps/snaps/matchers"
-	"strconv"
-	"testing"
 )
 
 // MatchJSON verifies the input matches the most recent snap file.
@@ -55,62 +51,6 @@ func MatchStandaloneSnapshot(t TestingT, value any) {
 	t.Helper()
 
 	defaultSnap.WithTesting(t).matchStandaloneSnapshot(value)
-}
-
-// Clean runs checks for identifying obsolete snapshots and prints a Test Summary.
-//
-// Must be called in a TestMain
-//
-//	func TestMain(m *testing.M) {
-//	 v := m.Run()
-//
-//	 // After all tests have run `go-snaps` can check for unused snapshots
-//	 snaps.Clean(m)
-//
-//	 os.Exit(v)
-//	}
-//
-// Clean also supports options for sorting the snapshots
-//
-//	func TestMain(m *testing.M) {
-//	 v := m.Run()
-//
-//	 // After all tests have run `go-snaps` will sort snapshots
-//	 snaps.Clean(m, snaps.CleanOpts{Sort: true})
-//
-//	 os.Exit(v)
-//	}
-
-type CleanOpts struct {
-	// If set to true, `go-snaps` will sort the snapshots
-	Sort bool
-}
-
-func Clean(m *testing.M, opts ...CleanOpts) {
-	s := defaultSnap
-
-	var opt CleanOpts
-	if len(opts) != 0 {
-		opt = opts[0]
-	}
-
-	// This is just for making sure Clean is called from TestMain
-	_ = m
-	runOnly := flag.Lookup("test.run").Value.String()
-	count, _ := strconv.Atoi(flag.Lookup("test.count").Value.String())
-	registeredStandaloneTests := s.occurrences(s.registry.registryCleanup, count, s.standaloneOccurrenceFMT)
-
-	obsoleteFiles, usedFiles := s.examineFiles(s.registry.registryCleanup, registeredStandaloneTests, runOnly, shouldClean && !isCI)
-	obsoleteTests, err := s.examineSnaps(s.registry.registryCleanup, usedFiles, runOnly, count, shouldClean && !isCI, opt.Sort && !isCI)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	summary := s.summary(obsoleteFiles, obsoleteTests, len(s.getSkippedTests()), s.registry.testEvents, shouldClean && !isCI)
-	if summary != "" {
-		fmt.Println(s)
-	}
 }
 
 // Skip Wrapper of testing.Skip

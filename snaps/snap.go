@@ -1,8 +1,6 @@
 package snaps
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,20 +9,11 @@ import (
 	"github.com/gkampitakis/go-snaps/snaps/matchers"
 	"github.com/gkampitakis/go-snaps/snaps/symbols"
 	valuePretty "github.com/kr/pretty"
-	"github.com/maruel/natural"
 	"github.com/tidwall/gjson"
 	jsonPretty "github.com/tidwall/pretty"
-	"go/ast"
-	"go/parser"
-	"go/token"
-	"io"
-	"math"
 	"os"
-	"path"
 	"path/filepath"
-	"regexp"
 	"runtime"
-	"slices"
 	"strings"
 	"sync"
 )
@@ -96,12 +85,6 @@ func newSnap(c *Config, t TestingT) *snap {
 
 func (s *snap) WithTesting(t TestingT) *snap {
 	s.t = t
-
-	return s
-}
-
-func (s *snap) WithRegistry(r *snapRegistry) *snap {
-	s.registry = r
 
 	return s
 }
@@ -416,59 +399,11 @@ func (s *snap) getPrevStandaloneSnapshot(snapPath string) (string, error) {
 	return string(f), nil
 }
 
-func (s *snap) getSkippedTests() []string {
-	return s.skippedTests
-}
-
 func (s *snap) trackSkip() {
 	s.t.Helper()
 
 	s.t.Log(skippedMsg)
 	s.addSkippedTest(s.t.Name())
-}
-
-func (s *snap) testSkipped(testID, runOnly string) bool {
-	// testID form: Test.*/runName - 1
-	testName := strings.Split(testID, " - ")[0]
-
-	for _, name := range s.skippedTests {
-		if testName == name || strings.HasPrefix(testName, name+"/") {
-			return true
-		}
-	}
-
-	matched, _ := regexp.MatchString(runOnly, testID)
-	return !matched
-}
-
-func (s *snap) isFileSkipped(dir, filename, runOnly string) bool {
-	// When a file is skipped through CLI with -run flag we can track it
-	if runOnly == "" {
-		return false
-	}
-
-	testFilePath := path.Join(dir, "..", strings.TrimSuffix(filename, snapsExt)+".go")
-
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, testFilePath, nil, parser.ParseComments)
-	if err != nil {
-		return false
-	}
-
-	for _, decls := range file.Decls {
-		funcDecl, ok := decls.(*ast.FuncDecl)
-		if !ok {
-			continue
-		}
-
-		// If the TestFunction is inside the file then it's not skipped
-		matched, _ := regexp.MatchString(runOnly, funcDecl.Name.String())
-		if matched {
-			return false
-		}
-	}
-
-	return true
 }
 
 func (s *snap) baseCaller(skip int) string {
@@ -507,317 +442,10 @@ func (s *snap) addSkippedTest(elems ...string) {
 	s.skippedTests = append(s.skippedTests, elems...)
 }
 
-func (s *snap) examineFiles(registry map[string]int, registeredStandaloneTests map[string]struct{}, runOnly string, shouldUpdate bool) (obsolete, used []string) {
-	uniqueDirs := make(map[string]struct{})
-
-	for snapPaths := range registry {
-		uniqueDirs[filepath.Dir(snapPaths)] = struct{}{}
-	}
-
-	for snapPaths := range registeredStandaloneTests {
-		uniqueDirs[filepath.Dir(snapPaths)] = struct{}{}
-	}
-
-	for dir := range uniqueDirs {
-		dirContents, _ := os.ReadDir(dir)
-
-		for _, content := range dirContents {
-			// this is a sanity check shouldn't have dirs inside the snapshot dirs
-			// and only delete any `.snap` files
-			if content.IsDir() || !strings.Contains(content.Name(), snapsExt) {
-				continue
-			}
-
-			snapPath := filepath.Join(dir, content.Name())
-			if _, called := registry[snapPath]; called {
-				used = append(used, snapPath)
-				continue
-			}
-
-			// if it's a standalone snapshot we don't add it to used list
-			// as we don't need it for the next step, to examine individual snaps inside the file
-			// as it contains only one
-			if _, ok := registeredStandaloneTests[snapPath]; ok {
-				continue
-			}
-
-			if s.isFileSkipped(dir, content.Name(), runOnly) {
-				continue
-			}
-
-			obsolete = append(obsolete, snapPath)
-
-			if !shouldUpdate {
-				continue
-			}
-
-			if err := os.Remove(snapPath); err != nil {
-				fmt.Println(err)
-			}
-		}
-	}
-
-	return obsolete, used
-}
-
-func (s *snap) examineSnaps(registry map[string]int, used []string, runOnly string, count int, update, sort bool) ([]string, error) {
-	obsoleteTests := make([]string, 0)
-	tests := make(map[string]string)
-	data := bytes.Buffer{}
-	testIDs := make([]string, 0)
-
-	for _, snapPath := range used {
-		f, err := os.OpenFile(snapPath, os.O_RDWR, os.ModePerm)
-		if err != nil {
-			return nil, err
-		}
-
-		var hasDiffs bool
-
-		registeredTests := s.occurrences(registry, count, s.snapshotOccurrenceFMT)
-		snapshotScanner := s.snapshotScanner(f)
-
-		testID := snapPath
-		testIDs = append(testIDs, testID)
-
-		_, hasRegisteredTests := registeredTests[testID]
-		if !hasRegisteredTests && !s.testSkipped(testID, runOnly) {
-			obsoleteTests = append(obsoleteTests, testID)
-			hasDiffs = true
-
-			s.removeSnapshot(snapshotScanner)
-			continue
-		}
-
-		for snapshotScanner.Scan() {
-			line := snapshotScanner.Bytes()
-
-			if bytes.Equal(line, endSequenceByteSlice) {
-				tests[testID] = data.String()
-
-				data.Reset()
-				break
-			}
-
-			data.Write(line)
-			data.WriteByte('\n')
-		}
-
-		if err := snapshotScanner.Err(); err != nil {
-			return nil, err
-		}
-
-		shouldSort := sort && !slices.IsSortedFunc(testIDs, s.naturalSort)
-		shouldUpdate := update && hasDiffs
-
-		// if we don't have to "write" anything on the snap we skip
-		if !shouldUpdate && !shouldSort {
-			_ = f.Close()
-
-			clear(tests)
-			testIDs = testIDs[:0]
-			data.Reset()
-
-			continue
-		}
-
-		if shouldSort {
-			// sort testIDs
-			slices.SortFunc(testIDs, s.naturalSort)
-		}
-
-		if err := s.overwriteFile(f, nil); err != nil {
-			return nil, err
-		}
-
-		for _, id := range testIDs {
-			test, ok := tests[id]
-			if !ok {
-				continue
-			}
-
-			_, _ = fmt.Fprintf(f, "\n[%s]\n%s%s\n", id, test, endSequence)
-		}
-		_ = f.Close()
-
-		clear(tests)
-		testIDs = testIDs[:0]
-		data.Reset()
-	}
-
-	return obsoleteTests, nil
-}
-
-func (s *snap) getTestID(b []byte) (string, bool) {
-	if len(b) == 0 {
-		return "", false
-	}
-
-	// needs to start with [Test and end with ]
-	if !bytes.HasPrefix(b, []byte("[Test")) || b[len(b)-1] != ']' {
-		return "", false
-	}
-
-	// needs to contain ' - '
-	separator := bytes.Index(b, []byte(" - "))
-	if separator == -1 {
-		return "", false
-	}
-
-	// needs to have a number after the separator
-	if !s.isNumber(b[separator+3 : len(b)-1]) {
-		return "", false
-	}
-
-	return string(b[1 : len(b)-1]), true
-}
-
-func (s *snap) summary(obsoleteFiles, obsoleteTests []string, noSkippedTests int, testEvents map[uint8]int, shouldUpdate bool) string {
-	if len(obsoleteFiles) == 0 &&
-		len(obsoleteTests) == 0 &&
-		len(testEvents) == 0 &&
-		noSkippedTests == 0 {
-		return ""
-	}
-
-	var builder strings.Builder
-
-	objectSummaryList := func(objects []string, name string) {
-		subject := name
-		action := "obsolete"
-		color := colors.Yellow
-		if len(objects) > 1 {
-			subject = name + "s"
-		}
-		if shouldUpdate {
-			action = "removed"
-			color = colors.Green
-		}
-
-		colors.Fprint(
-			&builder,
-			color,
-			fmt.Sprintf("\n%s%d snapshot %s %s\n", symbols.ArrowSymbol, len(objects), subject, action),
-		)
-
-		for _, object := range objects {
-			colors.Fprint(
-				&builder,
-				colors.Dim,
-				fmt.Sprintf("  %s %s%s\n", symbols.EnterSymbol, symbols.BulletSymbol, object),
-			)
-		}
-	}
-
-	_, _ = fmt.Fprintf(&builder, "\n%s\n\n", colors.Sprint(colors.BoldWhite, "Snapshot Summary"))
-
-	s.printEvent(&builder, colors.Green, symbols.SuccessSymbol, "passed", testEvents[passed])
-	s.printEvent(&builder, colors.Red, symbols.ErrorSymbol, "failed", testEvents[erred])
-	s.printEvent(&builder, colors.Green, symbols.UpdateSymbol, "added", testEvents[added])
-	s.printEvent(&builder, colors.Green, symbols.UpdateSymbol, "updated", testEvents[updated])
-	s.printEvent(&builder, colors.Yellow, symbols.SkipSymbol, "skipped", noSkippedTests)
-
-	if len(obsoleteFiles) > 0 {
-		objectSummaryList(obsoleteFiles, "file")
-	}
-
-	if len(obsoleteTests) > 0 {
-		objectSummaryList(obsoleteTests, "test")
-	}
-
-	if !shouldUpdate && len(obsoleteFiles)+len(obsoleteTests) > 0 {
-		it := "it"
-
-		if len(obsoleteFiles)+len(obsoleteTests) > 1 {
-			it = "them"
-		}
-
-		colors.Fprint(
-			&builder,
-			colors.Dim,
-			fmt.Sprintf(
-				"\nTo remove %s, re-run tests with `UPDATE_SNAPS=clean go test ./...`\n",
-				it,
-			),
-		)
-	}
-
-	return builder.String()
-}
-
-func (s *snap) isNumber(b []byte) bool {
-	for i := 0; i < len(b); i++ {
-		if b[i] < '0' || b[i] > '9' {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (s *snap) printEvent(w io.Writer, color, symbol, verb string, events int) {
-	if events == 0 {
-		return
-	}
-	subject := "snapshot"
-	if events > 1 {
-		subject += "s"
-	}
-
-	colors.Fprint(w, color, fmt.Sprintf("%s%v %s %s\n", symbol, events, subject, verb))
-}
-
-func (s *snap) standaloneOccurrenceFMT(template string, i int) string {
-	return fmt.Sprintf(template, i)
-}
-
-func (s *snap) snapshotOccurrenceFMT(template string, i int) string {
-	return fmt.Sprintf("%s - %d", template, i)
-}
-
-func (s *snap) occurrences(tests map[string]int, count int, formatter func(string, int) string) map[string]struct{} {
-	result := make(map[string]struct{}, len(tests))
-	for testID, counter := range tests {
-		// divide a test's counter by count (how many times the go test suite ran)
-		// this gives us how many snapshots were created in a single test run.
-		counter = counter / count
-		if counter > 1 {
-			for i := 1; i <= counter; i++ {
-				result[formatter(testID, i)] = struct{}{}
-			}
-		}
-		result[formatter(testID, counter)] = struct{}{}
-	}
-
-	return result
-}
-
-func (s *snap) naturalSort(a, b string) int {
-	if a == b {
-		return 0
-	}
-	if natural.Less(a, b) {
-		return -1
-	}
-	return 1
-}
-
 func (s *snap) registerTestEvent(event uint8) {
 	s.registry.testEventsMutex.Lock()
 	defer s.registry.testEventsMutex.Unlock()
 	s.registry.testEvents[event]++
-}
-
-func (s *snap) overwriteFile(f *os.File, b []byte) error {
-	_ = f.Truncate(0)
-	_, _ = f.Seek(0, io.SeekStart)
-	_, err := f.Write(b)
-	return err
-}
-
-func (s *snap) removeSnapshot(scanner *bufio.Scanner) {
-	for scanner.Scan() {
-	}
 }
 
 func (s *snap) getTestIdFromRegistry(snapPath, snapPathRel string) (string, string) {
@@ -835,10 +463,4 @@ func (s *snap) resetSnapPathInRegistry(snapPath string) {
 	s.registry.registryMutex.Lock()
 	s.registry.registryRunning[snapPath] = 0
 	s.registry.registryMutex.Unlock()
-}
-
-func (s *snap) snapshotScanner(r io.Reader) *bufio.Scanner {
-	scanner := bufio.NewScanner(r)
-	scanner.Buffer([]byte{}, math.MaxInt)
-	return scanner
 }
