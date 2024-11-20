@@ -3,13 +3,13 @@ package examples
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gkampitakis/go-snaps/snaps/matchers"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/gkampitakis/go-snaps/match"
 	"github.com/gkampitakis/go-snaps/snaps"
 )
 
@@ -26,7 +26,7 @@ func (m *myMatcher) AgeGreater(a int) *myMatcher {
 	return m
 }
 
-func (m *myMatcher) JSON(s []byte) ([]byte, []match.MatcherError) {
+func (m *myMatcher) JSON(s []byte) ([]byte, []matchers.MatcherError) {
 	var v struct {
 		User  string
 		Age   int
@@ -35,7 +35,7 @@ func (m *myMatcher) JSON(s []byte) ([]byte, []match.MatcherError) {
 
 	err := json.Unmarshal(s, &v)
 	if err != nil {
-		return nil, []match.MatcherError{
+		return nil, []matchers.MatcherError{
 			{
 				Reason:  err,
 				Matcher: "my matcher",
@@ -45,7 +45,7 @@ func (m *myMatcher) JSON(s []byte) ([]byte, []match.MatcherError) {
 	}
 
 	if v.Age < m.age {
-		return nil, []match.MatcherError{
+		return nil, []matchers.MatcherError{
 			{
 				Reason:  fmt.Errorf("%d is >= from %d", m.age, v.Age),
 				Matcher: "my matcher",
@@ -108,7 +108,7 @@ func TestMatchers(t *testing.T) {
 				Keys:  []int{1, 2, 3, 4, 5},
 			}
 
-			snaps.MatchJSON(t, u, match.Custom("keys", func(val any) (any, error) {
+			snaps.MatchJSON(t, u, matchers.Custom("keys", func(val any) (any, error) {
 				keys, ok := val.([]any)
 				if !ok {
 					return nil, fmt.Errorf("expected []any but got %T", val)
@@ -126,7 +126,7 @@ func TestMatchers(t *testing.T) {
 	t.Run("JSON string validation", func(t *testing.T) {
 		value := `{"user":"mock-user","age":2,"email":"mock@email.com"}`
 
-		snaps.MatchJSON(t, value, match.Custom("age", func(val any) (any, error) {
+		snaps.MatchJSON(t, value, matchers.Custom("age", func(val any) (any, error) {
 			if valInt, ok := val.(float64); !ok || valInt >= 5 {
 				return nil, fmt.Errorf("expecting number less than 5")
 			}
@@ -141,7 +141,7 @@ func TestMatchers(t *testing.T) {
 				`{"user":"mock-user","age":10,"nested":{"now":["%s"]}}`,
 				time.Now(),
 			)
-			snaps.MatchJSON(t, value, match.Any("nested.now.0"))
+			snaps.MatchJSON(t, value, matchers.Any("nested.now.0"))
 		})
 	})
 
@@ -176,15 +176,15 @@ func TestMatchers(t *testing.T) {
 			return
 		}
 
-		snaps.MatchJSON(t, body, match.Any("data.createdAt"))
+		snaps.MatchJSON(t, body, matchers.Any("data.createdAt"))
 	})
 
 	t.Run("type matcher", func(t *testing.T) {
-		snaps.MatchJSON(t, `{"data":10}`, match.Type[float64]("data"))
+		snaps.MatchJSON(t, `{"data":10}`, matchers.Type[float64]("data"))
 		snaps.MatchJSON(
 			t,
 			`{"metadata":{"timestamp":"1687108093142"}}`,
-			match.Type[map[string]any]("metadata"),
+			matchers.Type[map[string]any]("metadata"),
 		)
 	})
 }
