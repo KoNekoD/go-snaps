@@ -577,37 +577,30 @@ func (s *snap) examineSnaps(registry map[string]int, used []string, runOnly stri
 		registeredTests := s.occurrences(registry, count, s.snapshotOccurrenceFMT)
 		snapshotScanner := s.snapshotScanner(f)
 
+		testID := snapPath
+		testIDs = append(testIDs, testID)
+
+		_, hasRegisteredTests := registeredTests[testID]
+		if !hasRegisteredTests && !s.testSkipped(testID, runOnly) {
+			obsoleteTests = append(obsoleteTests, testID)
+			hasDiffs = true
+
+			s.removeSnapshot(snapshotScanner)
+			continue
+		}
+
 		for snapshotScanner.Scan() {
-			b := snapshotScanner.Bytes()
-			// Check if line is a test id
-			testID, match := s.getTestID(b)
-			if !match {
-				continue
-			}
-			testIDs = append(testIDs, testID)
+			line := snapshotScanner.Bytes()
 
-			_, hasRegisteredTests := registeredTests[testID]
-			if !hasRegisteredTests && !s.testSkipped(testID, runOnly) {
-				obsoleteTests = append(obsoleteTests, testID)
-				hasDiffs = true
+			if bytes.Equal(line, endSequenceByteSlice) {
+				tests[testID] = data.String()
 
-				s.removeSnapshot(snapshotScanner)
-				continue
+				data.Reset()
+				break
 			}
 
-			for snapshotScanner.Scan() {
-				line := snapshotScanner.Bytes()
-
-				if bytes.Equal(line, endSequenceByteSlice) {
-					tests[testID] = data.String()
-
-					data.Reset()
-					break
-				}
-
-				data.Write(line)
-				data.WriteByte('\n')
-			}
+			data.Write(line)
+			data.WriteByte('\n')
 		}
 
 		if err := snapshotScanner.Err(); err != nil {
@@ -824,10 +817,6 @@ func (s *snap) overwriteFile(f *os.File, b []byte) error {
 
 func (s *snap) removeSnapshot(scanner *bufio.Scanner) {
 	for scanner.Scan() {
-		// skip until ---
-		if bytes.Equal(scanner.Bytes(), endSequenceByteSlice) {
-			break
-		}
 	}
 }
 
