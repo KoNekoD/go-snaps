@@ -2,7 +2,7 @@ package diff
 
 import (
 	"fmt"
-	"github.com/gkampitakis/go-snaps/internal/test"
+	"github.com/KoNekoD/go-snaps/internal/test"
 	"strings"
 	"testing"
 )

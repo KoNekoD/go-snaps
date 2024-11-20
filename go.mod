@@ -1,4 +1,4 @@
-module github.com/gkampitakis/go-snaps
+module github.com/KoNekoD/go-snaps
 
 go 1.21
 

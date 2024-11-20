@@ -1,7 +1,7 @@
 name: 🐛 Bug report
 description: Something doesn't work 🔥
 title: '[Bug]: '
-labels: ['bug']
+labels: [ 'bug' ]
 
 body:
   - type: textarea

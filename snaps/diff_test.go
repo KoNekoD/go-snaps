@@ -1,8 +1,8 @@
 package snaps
 
 import (
-	"github.com/gkampitakis/go-snaps/internal/test"
-	"github.com/gkampitakis/go-snaps/snaps/colors"
+	"github.com/KoNekoD/go-snaps/internal/test"
+	"github.com/KoNekoD/go-snaps/snaps/colors"
 	"strings"
 	"testing"
 )

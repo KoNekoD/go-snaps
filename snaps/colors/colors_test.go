@@ -1,7 +1,7 @@
 package colors
 
 import (
-	"github.com/gkampitakis/go-snaps/internal/test"
+	"github.com/KoNekoD/go-snaps/internal/test"
 	"io"
 	"strings"
 	"testing"

@@ -1,8 +1,8 @@
 # Go Snaps
 
-[![Go](https://github.com/gkampitakis/go-snaps/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/gkampitakis/go-snaps/actions/workflows/go.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/gkampitakis/go-snaps)](https://goreportcard.com/report/github.com/gkampitakis/go-snaps)
-[![Go Reference](https://pkg.go.dev/badge/github.com/gkampitakis/go-snaps.svg)](https://pkg.go.dev/github.com/gkampitakis/go-snaps)
+[![Go](https://github.com/KoNekoD/go-snaps/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/KoNekoD/go-snaps/actions/workflows/go.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/KoNekoD/go-snaps)](https://goreportcard.com/report/github.com/KoNekoD/go-snaps)
+[![Go Reference](https://pkg.go.dev/badge/github.com/KoNekoD/go-snaps.svg)](https://pkg.go.dev/github.com/KoNekoD/go-snaps)
 
 <p align="center">
 <b>Jest-like snapshot testing in Golang</b>
@@ -19,16 +19,16 @@
 - [Installation](#installation)
 - [MatchSnapshot](#matchsnapshot)
 - [MatchJSON](#matchjson)
-  - [Matchers](#matchers)
-    - [match.Any](#matchany)
-    - [match.Custom](#matchcustom)
-    - [match.Type\[ExpectedType\]](#matchtype)
+    - [Matchers](#matchers)
+        - [match.Any](#matchany)
+        - [match.Custom](#matchcustom)
+        - [match.Type\[ExpectedType\]](#matchtype)
 - [MatchStandaloneSnapshot](#matchstandalonesnapshot)
 - [Configuration](#configuration)
 - [Update Snapshots](#update-snapshots)
-  - [Clean obsolete Snapshots](#clean-obsolete-snapshots)
-  - [Sort Snapshots](#sort-snapshots)
-  - [Skipping Tests](#skipping-tests)
+    - [Clean obsolete Snapshots](#clean-obsolete-snapshots)
+    - [Sort Snapshots](#sort-snapshots)
+    - [Skipping Tests](#skipping-tests)
 - [Running tests on CI](#running-tests-on-ci)
 - [No Color](#no-color)
 - [Snapshots Structure](#snapshots-structure)
@@ -41,7 +41,7 @@
 To install `go-snaps`, use `go get`:
 
 ```bash
-go get github.com/gkampitakis/go-snaps
+go get github.com/KoNekoD/go-snaps
 ```
 
 Import the `go-snaps/snaps` package into your code:
@@ -50,13 +50,13 @@ Import the `go-snaps/snaps` package into your code:
 package example
 
 import (
-  "testing"
+	"testing"
 
-  "github.com/gkampitakis/go-snaps/snaps"
+	"github.com/KoNekoD/go-snaps/snaps"
 )
 
 func TestExample(t *testing.T) {
-  snaps.MatchSnapshot(t, "Hello World")
+	snaps.MatchSnapshot(t, "Hello World")
 }
 ```
 
@@ -72,10 +72,10 @@ create multiple entries in the snapshot file.
 // test_simple.go
 
 func TestSimple(t *testing.T) {
-  t.Run("should make multiple entries in snapshot", func(t *testing.T) {
-    snaps.MatchSnapshot(t, 5, 10, 20, 25)
-    snaps.MatchSnapshot(t, "some value")
-  })
+t.Run("should make multiple entries in snapshot", func (t *testing.T) {
+snaps.MatchSnapshot(t, 5, 10, 20, 25)
+snaps.MatchSnapshot(t, "some value")
+})
 }
 ```
 
@@ -94,14 +94,14 @@ successfully on `json.Marshal`.
 
 ```go
 func TestJSON(t *testing.T) {
-  type User struct {
-    Age   int
-    Email string
-  }
+type User struct {
+Age   int
+Email string
+}
 
-  snaps.MatchJSON(t, `{"user":"mock-user","age":10,"email":"mock@email.com"}`)
-  snaps.MatchJSON(t, []byte(`{"user":"mock-user","age":10,"email":"mock@email.com"}`))
-  snaps.MatchJSON(t, User{10, "mock-email"})
+snaps.MatchJSON(t, `{"user":"mock-user","age":10,"email":"mock@email.com"}`)
+snaps.MatchJSON(t, []byte(`{"user":"mock-user","age":10,"email":"mock@email.com"}`))
+snaps.MatchJSON(t, User{10, "mock-email"})
 }
 ```
 
@@ -114,7 +114,8 @@ as property matchers and test values.
 
 You can pass the path of the property you want to match and test.
 
-_More information about the supported path syntax from [gjson](https://github.com/tidwall/gjson/blob/v1.17.0/SYNTAX.md)._
+_More information about the supported path syntax
+from [gjson](https://github.com/tidwall/gjson/blob/v1.17.0/SYNTAX.md)._
 
 Currently `go-snaps` has three build in matchers
 
@@ -137,8 +138,8 @@ Any matcher provides some methods for setting options
 
 ```go
 match.Any("user.name").
-  Placeholder(value). // allows to define a different placeholder value from the default "<Any Value>"
-  ErrOnMissingPath(bool) // determines whether the matcher will err in case of a missing, default true
+Placeholder(value).    // allows to define a different placeholder value from the default "<Any Value>"
+ErrOnMissingPath(bool) // determines whether the matcher will err in case of a missing, default true
 ```
 
 #### match.Custom
@@ -146,25 +147,25 @@ match.Any("user.name").
 Custom matcher allows you to bring your own validation and placeholder value
 
 ```go
-match.Custom("user.age", func(val any) (any, error) {
-		age, ok := val.(float64)
-		if !ok {
-				return nil, fmt.Errorf("expected number but got %T", val)
-		}
+match.Custom("user.age", func (val any) (any, error) {
+age, ok := val.(float64)
+if !ok {
+return nil, fmt.Errorf("expected number but got %T", val)
+}
 
-		return "some number", nil
+return "some number", nil
 })
 ```
 
 The callback parameter value for JSON can be on of these types:
 
 ```go
-bool // for JSON booleans
+bool    // for JSON booleans
 float64 // for JSON numbers
-string // for JSON string literals
-nil // for JSON null
+string  // for JSON string literals
+nil     // for JSON null
 map[string]any // for JSON objects
-[]any // for JSON arrays
+[]any          // for JSON arrays
 ```
 
 If Custom matcher returns an error the snapshot test will fail with that error.
@@ -172,14 +173,15 @@ If Custom matcher returns an error the snapshot test will fail with that error.
 Custom matcher provides a method for setting an option
 
 ```go
-match.Custom("path",myFunc).
-  Placeholder(value). // allows to define a different placeholder value from the default "<Any Value>"
-  ErrOnMissingPath(bool) // determines whether the matcher will err in case of a missing path, default true
+match.Custom("path", myFunc).
+Placeholder(value).    // allows to define a different placeholder value from the default "<Any Value>"
+ErrOnMissingPath(bool) // determines whether the matcher will err in case of a missing path, default true
 ```
 
 #### match.Type
 
-Type matcher evaluates types that are passed in a snapshot and it replaces any targeted path with a placeholder in the form of `<Type:ExpectedType>`.
+Type matcher evaluates types that are passed in a snapshot and it replaces any targeted path with a placeholder in the
+form of `<Type:ExpectedType>`.
 
 ```go
 match.Type[string]("user.info")
@@ -191,14 +193,15 @@ Type matcher provides a method for setting an option
 
 ```go
 match.Type[string]("user.info").
-  ErrOnMissingPath(bool) // determines whether the matcher will err in case of a missing path, default true
+ErrOnMissingPath(bool) // determines whether the matcher will err in case of a missing path, default true
 ```
 
 You can see more [examples](./examples/matchJSON_test.go#L96).
 
 ## MatchStandaloneSnapshot
 
-`MatchStandaloneSnapshot` will create snapshots on separate files as opposed to `MatchSnapshot` which adds multiple snapshots inside the same file.
+`MatchStandaloneSnapshot` will create snapshots on separate files as opposed to `MatchSnapshot` which adds multiple
+snapshots inside the same file.
 
 _Combined with `snaps.Ext` you can have proper syntax highlighting and better readability_
 
@@ -206,10 +209,10 @@ _Combined with `snaps.Ext` you can have proper syntax highlighting and better re
 // test_simple.go
 
 func TestSimple(t *testing.T) {
-  snaps.MatchStandaloneSnapshot(t, "Hello World")
-  // or create an html snapshot file
-  snaps.WithConfig(snaps.Ext(".html")).
-    MatchStandaloneSnapshot(t, "<html><body><h1>Hello World</h1></body></html>")
+snaps.MatchStandaloneSnapshot(t, "Hello World")
+// or create an html snapshot file
+snaps.WithConfig(snaps.Ext(".html")).
+MatchStandaloneSnapshot(t, "<html><body><h1>Hello World</h1></body></html>")
 }
 ```
 
@@ -226,20 +229,21 @@ will be created at `./__snapshots__/TestSimple_1.snaps`.
 - the directory where snapshots are stored, _relative or absolute path_
 - the filename where snapshots are stored
 - the snapshot file's extension (_regardless the extension the filename will include the `.snaps` inside the filename_)
-- programmatically control whether to update snapshots. _You can find an example usage at [examples](/examples/examples_test.go#13)_
+- programmatically control whether to update snapshots. _You can find an example usage
+  at [examples](/examples/examples_test.go#13)_
 
 ```go
-t.Run("snapshot tests", func(t *testing.T) {
-  snaps.WithConfig(snaps.Filename("my_custom_name"), snaps.Dir("my_dir")).MatchSnapshot(t, "Hello Word")
+t.Run("snapshot tests", func (t *testing.T) {
+snaps.WithConfig(snaps.Filename("my_custom_name"), snaps.Dir("my_dir")).MatchSnapshot(t, "Hello Word")
 
-  s := snaps.WithConfig(
-    snaps.Dir("my_dir"),
-    snaps.Filename("json_file"),
-    snaps.Ext(".json")
-    snaps.Update(false)
-  )
+s := snaps.WithConfig(
+snaps.Dir("my_dir"),
+snaps.Filename("json_file"),
+snaps.Ext(".json")
+snaps.Update(false)
+)
 
-  s.MatchJSON(t, `{"hello":"world"}`)
+s.MatchJSON(t, `{"hello":"world"}`)
 })
 ```
 
@@ -285,12 +289,12 @@ are finished so it can keep track of which snapshots were not called.
 
 ```go
 func TestMain(m *testing.M) {
-  v := m.Run()
+v := m.Run()
 
-  // After all tests have run `go-snaps` can check for unused snapshots
-  snaps.Clean(m)
+// After all tests have run `go-snaps` can check for unused snapshots
+snaps.Clean(m)
 
-  os.Exit(v)
+os.Exit(v)
 }
 ```
 
@@ -298,16 +302,17 @@ For more information around [TestMain](https://pkg.go.dev/testing#hdr-Main).
 
 ### Sort Snapshots
 
-By default `go-snaps` appends new snaps to the snapshot file and in case of parallel tests the order is random. If you want snaps to be sorted in deterministic order you need to use `TestMain` per package:
+By default `go-snaps` appends new snaps to the snapshot file and in case of parallel tests the order is random. If you
+want snaps to be sorted in deterministic order you need to use `TestMain` per package:
 
 ```go
 func TestMain(m *testing.M) {
-  v := m.Run()
+v := m.Run()
 
-  // After all tests have run `go-snaps` will sort snapshots
-  snaps.Clean(m, snaps.CleanOpts{Sort: true})
+// After all tests have run `go-snaps` will sort snapshots
+snaps.Clean(m, snaps.CleanOpts{Sort: true})
 
-  os.Exit(v)
+os.Exit(v)
 }
 ```
 
@@ -323,9 +328,10 @@ for obsolete snapshots.
 
 ## Running Tests on CI
 
-When `go-snaps` detects that it is running in CI it will automatically fail when snapshots are missing. This is done to ensure new snapshots are committed alongside the tests and assertions are successful.
+When `go-snaps` detects that it is running in CI it will automatically fail when snapshots are missing. This is done to
+ensure new snapshots are committed alongside the tests and assertions are successful.
 
-> `go-snaps` uses [ciinfo](https://github.com/gkampitakis/ciinfo) for detecting if it runs on CI environment.
+> `go-snaps` uses [ciinfo](https://github.com/KoNekoD/ciinfo) for detecting if it runs on CI environment.
 
 ## No Color
 
@@ -362,11 +368,13 @@ map[string]interface{}{
 ```
 
 > [!NOTE]
-> If your snapshot data contain characters `---` at the start of a line followed by a new line, `go-snaps` will "escape" them and save them as `/-/-/-/` to differentiate them from termination characters.
+> If your snapshot data contain characters `---` at the start of a line followed by a new line, `go-snaps` will "escape"
+> them and save them as `/-/-/-/` to differentiate them from termination characters.
 
 ## Acknowledgments
 
-This library used [Jest Snapshoting](https://jestjs.io/docs/snapshot-testing) and [Cupaloy](https://github.com/bradleyjkemp/cupaloy) as inspiration.
+This library used [Jest Snapshoting](https://jestjs.io/docs/snapshot-testing)
+and [Cupaloy](https://github.com/bradleyjkemp/cupaloy) as inspiration.
 
 - Jest is a full-fledged Javascript testing framework and has robust snapshoting features.
 - Cupaloy is a great and simple Golang snapshoting solution.
@@ -375,10 +383,12 @@ This library used [Jest Snapshoting](https://jestjs.io/docs/snapshot-testing) an
 ## Appendix
 
 > [!WARNING]
-> When running a specific test file by specifying a path `go test ./my_test.go`, `go-snaps` can't track the path so it will mistakenly mark snapshots as obsolete.
+> When running a specific test file by specifying a path `go test ./my_test.go`, `go-snaps` can't track the path so it
+> will mistakenly mark snapshots as obsolete.
 
 > [!IMPORTANT]
-> Snapshots should be treated as code. The snapshot artifact should be committed alongside code changes, and reviewed as part of your code review process
+> Snapshots should be treated as code. The snapshot artifact should be committed alongside code changes, and reviewed as
+> part of your code review process
 
 > [!NOTE]
 > go-snaps doesn't handle CRLF line endings. If you are using Windows, you may need to convert the line endings to LF.

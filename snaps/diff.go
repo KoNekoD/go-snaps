@@ -3,9 +3,9 @@ package snaps
 import (
 	"bytes"
 	"fmt"
-	"github.com/gkampitakis/go-snaps/snaps/colors"
-	"github.com/gkampitakis/go-snaps/snaps/diff"
-	"github.com/gkampitakis/go-snaps/snaps/symbols"
+	"github.com/KoNekoD/go-snaps/snaps/colors"
+	"github.com/KoNekoD/go-snaps/snaps/diff"
+	"github.com/KoNekoD/go-snaps/snaps/symbols"
 	"io"
 	"strconv"
 	"strings"

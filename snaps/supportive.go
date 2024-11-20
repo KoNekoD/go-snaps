@@ -1,7 +1,7 @@
 package snaps
 
 import (
-	"github.com/gkampitakis/go-snaps/snaps/matchers"
+	"github.com/KoNekoD/go-snaps/snaps/matchers"
 )
 
 // MatchJSON verifies the input matches the most recent snap file.
