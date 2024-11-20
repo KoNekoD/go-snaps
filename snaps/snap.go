@@ -34,7 +34,6 @@ var (
 	defaultRegistry = newSnapRegistry()
 	isCI            = ciinfo.IsCI
 	updateVAR       = os.Getenv("UPDATE_SNAPS")
-	jsonOptions     = &jsonPretty.Options{SortKeys: true, Indent: " "}
 	skippedMsg      = colors.Sprint(colors.Yellow, symbols.SkipSymbol+"Snapshot skipped")
 	addedMsg        = colors.Sprint(colors.Green, symbols.UpdateSymbol+"Snapshot added")
 	updatedMsg      = colors.Sprint(colors.Green, symbols.UpdateSymbol+"Snapshot updated")
@@ -67,13 +66,11 @@ func newSnapRegistry() *snapRegistry {
 }
 
 type snap struct {
-	c *Config
-	t TestingT
-
+	c                 *Config
+	t                 TestingT
 	skippedTests      []string
 	skippedTestsMutex sync.Mutex
-
-	registry *snapRegistry
+	registry          *snapRegistry
 }
 
 func newSnap(c *Config, t TestingT) *snap {
@@ -117,13 +114,9 @@ func (s *snap) matchJson(input any, matchers ...matchers.JsonMatcher) {
 	v, matchersErrors := s.applyJsonMatchers(v, matchers...)
 	if len(matchersErrors) > 0 {
 		sb := strings.Builder{}
-
 		for _, err := range matchersErrors {
-			str := fmt.Sprintf("\n%smatch.%s(\"%s\") - %s", symbols.ErrorSymbol, err.Matcher, err.Path, err.Reason)
-
-			colors.Fprint(&sb, colors.Red, str)
+			colors.Fprint(&sb, colors.Red, fmt.Sprintf("\n%smatch.%s(\"%s\") - %s", symbols.ErrorSymbol, err.Matcher, err.Path, err.Reason))
 		}
-
 		s.handleError(sb.String())
 		return
 	}
@@ -139,67 +132,53 @@ func (s *snap) prepare() (string, string) {
 }
 
 func (s *snap) handleSnapshot(snapshot, snapPath, snapPathRel string) {
-	prevSnapshot, err := s.getPrevStandaloneSnapshot(snapPath)
-	if errors.Is(err, errSnapNotFound) {
+	fileBytes, err := os.ReadFile(snapPath)
+	if err != nil {
 		if isCI {
-			s.handleError(err)
+			s.handleError(errSnapNotFound)
 			return
 		}
-
 		err := s.upsertStandaloneSnapshot(snapshot, snapPath)
 		if err != nil {
 			s.handleError(err)
 			return
 		}
-
 		s.t.Log(addedMsg)
 		s.registerTestEvent(added)
 		return
 	}
-	if err != nil {
-		s.handleError(err)
-		return
-	}
 
-	prettyDiff := PrettyDiff(prevSnapshot, snapshot, snapPathRel, 1)
+	prettyDiff := PrettyDiff(string(fileBytes), snapshot, snapPathRel, 1)
 	if prettyDiff == "" {
 		s.registerTestEvent(passed)
 		return
 	}
-
 	if !s.shouldUpdate() {
 		s.handleError(prettyDiff)
 		return
 	}
-
 	if err = s.upsertStandaloneSnapshot(snapshot, snapPath); err != nil {
 		s.handleError(err)
 		return
 	}
-
 	s.t.Log(updatedMsg)
 	s.registerTestEvent(updated)
 }
 
 func (s *snap) takeSnapshot(objects []any) string {
 	snapshots := make([]string, len(objects))
-
 	for i, object := range objects {
 		snapshots[i] = valuePretty.Sprint(object)
 	}
-
 	return strings.Join(snapshots, "\n")
 }
 
 func (s *snap) snapshotPath() (string, string) {
-	//  skips current func, the wrapper match* and the exported Match* func
-	callerFilename := s.baseCaller(3)
-
+	callerFilename := s.baseCaller(3) //  skips current func, the wrapper match* and the exported Match* func
 	dir := s.c.SnapsDir()
 	if !filepath.IsAbs(dir) {
 		dir = filepath.Join(filepath.Dir(callerFilename), s.c.SnapsDir())
 	}
-
 	snapPath := filepath.Join(dir, s.constructFilename(callerFilename))
 	snapPathRel, _ := filepath.Rel(filepath.Dir(callerFilename), snapPath)
 
@@ -211,10 +190,8 @@ func (s *snap) constructFilename(callerFilename string) string {
 	if filename == "" {
 		base := filepath.Base(callerFilename)
 		filename = strings.TrimSuffix(base, filepath.Ext(base))
-
 		filename = strings.ReplaceAll(s.t.Name(), "/", "_")
 	}
-
 	filename += "_%d"
 	filename += snapsExt + s.c.Extension()
 
@@ -222,7 +199,7 @@ func (s *snap) constructFilename(callerFilename string) string {
 }
 
 func (s *snap) takeJsonSnapshot(b []byte) string {
-	return strings.TrimSuffix(string(jsonPretty.PrettyOptions(b, jsonOptions)), "\n")
+	return strings.TrimSuffix(string(jsonPretty.PrettyOptions(b, &jsonPretty.Options{SortKeys: true, Indent: " "})), "\n")
 }
 
 func (s *snap) applyJsonMatchers(b []byte, matchersList ...matchers.JsonMatcher) ([]byte, []matchers.MatcherError) {
@@ -280,23 +257,15 @@ func (s *snap) upsertStandaloneSnapshot(snapshot, snapPath string) error {
 	if err := os.MkdirAll(filepath.Dir(snapPath), os.ModePerm); err != nil {
 		return err
 	}
-
 	return os.WriteFile(snapPath, []byte(snapshot), os.ModePerm)
-}
-
-func (s *snap) getPrevStandaloneSnapshot(snapPath string) (string, error) {
-	f, err := os.ReadFile(snapPath)
-	if err != nil {
-		return "", errSnapNotFound
-	}
-
-	return string(f), nil
 }
 
 func (s *snap) trackSkip() {
 	s.t.Helper()
 	s.t.Log(skippedMsg)
-	s.addSkippedTest(s.t.Name())
+	s.skippedTestsMutex.Lock()
+	s.skippedTests = append(s.skippedTests, s.t.Name())
+	s.skippedTestsMutex.Unlock()
 }
 
 func (s *snap) baseCaller(skip int) string {
@@ -326,13 +295,6 @@ func (s *snap) baseCaller(skip int) string {
 			return file
 		}
 	}
-}
-
-func (s *snap) addSkippedTest(elems ...string) {
-	s.skippedTestsMutex.Lock()
-	defer s.skippedTestsMutex.Unlock()
-
-	s.skippedTests = append(s.skippedTests, elems...)
 }
 
 func (s *snap) registerTestEvent(event uint8) {
