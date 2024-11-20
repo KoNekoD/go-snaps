@@ -42,10 +42,6 @@ var (
 )
 
 const (
-	snapsExt = ".snap"
-)
-
-const (
 	erred uint8 = iota
 	added
 	updated
@@ -68,13 +64,14 @@ func newSnapRegistry() *snapRegistry {
 type snap struct {
 	c                 *Config
 	t                 TestingT
+	fileExtension     string
 	skippedTests      []string
 	skippedTestsMutex sync.Mutex
 	registry          *snapRegistry
 }
 
 func newSnap(c *Config, t TestingT) *snap {
-	return &snap{c: c, t: t, skippedTests: make([]string, 0), registry: defaultRegistry}
+	return &snap{c: c, t: t, skippedTests: make([]string, 0), registry: defaultRegistry, fileExtension: ".snap"}
 }
 
 func (s *snap) withTesting(t TestingT) *snap {
@@ -102,6 +99,7 @@ func (s *snap) matchSnapshot(v ...any) {
 }
 
 func (s *snap) matchJson(input any, matchers ...matchers.JsonMatcher) {
+	s.fileExtension = ".json"
 	s.t.Helper()
 	snapPath, snapPathRel := s.prepare()
 
@@ -193,7 +191,7 @@ func (s *snap) constructFilename(callerFilename string) string {
 		filename = strings.ReplaceAll(s.t.Name(), "/", "_")
 	}
 	filename += "_%d"
-	filename += snapsExt + s.c.Extension()
+	filename += s.fileExtension + s.c.Extension()
 
 	return filename
 }
