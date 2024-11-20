@@ -1,0 +1,1 @@
+struct { user string; email string; age int }{user:"gkampitakis", email:"mock@mail.com", age:10}

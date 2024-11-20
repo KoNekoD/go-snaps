@@ -1,0 +1,10 @@
+
+[1;38;5;255mSnapshot Summary[0m
+
+[33;1m
+› 2 snapshot tests obsolete
+[0m[2m  ↳  • TestMock/should_pass - 1
+[0m[2m  ↳  • TestMock/should_pass - 2
+[0m[2m
+To remove them, re-run tests with `UPDATE_SNAPS=clean go test ./...`
+[0m

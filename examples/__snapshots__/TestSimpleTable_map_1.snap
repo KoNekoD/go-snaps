@@ -1,0 +1,3 @@
+map[string]interface {}{
+    "test": func() {...},
+}
