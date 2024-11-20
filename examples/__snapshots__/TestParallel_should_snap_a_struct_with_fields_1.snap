@@ -1,5 +1,0 @@
-struct { _ struct {}; name string; id string }{
-    _:    struct {}{},
-    name: "mock-name",
-    id:   "123456",
-}
