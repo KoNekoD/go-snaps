@@ -77,7 +77,7 @@ func newSnap(c *Config, t TestingT) *snap {
 	return &snap{c: c, t: t, skippedTests: make([]string, 0), registry: defaultRegistry}
 }
 
-func (s *snap) WithTesting(t TestingT) *snap {
+func (s *snap) withTesting(t TestingT) *snap {
 	s.t = t
 
 	return s
