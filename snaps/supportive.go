@@ -19,7 +19,7 @@ import (
 func MatchJSON(t TestingT, input any, matchers ...matchers.JsonMatcher) {
 	t.Helper()
 
-	defaultSnap.WithTesting(t).matchJson(input, matchers...)
+	defaultSnap.withTesting(t).matchJson(input, matchers...)
 }
 
 // MatchSnapshot verifies the values match the most recent snap file
@@ -36,7 +36,7 @@ func MatchJSON(t TestingT, input any, matchers ...matchers.JsonMatcher) {
 func MatchSnapshot(t TestingT, values ...any) {
 	t.Helper()
 
-	defaultSnap.WithTesting(t).matchSnapshot(values...)
+	defaultSnap.withTesting(t).matchSnapshot(values...)
 }
 
 // MatchStandaloneSnapshot verifies the value matches the most recent snap file
@@ -50,7 +50,7 @@ func MatchSnapshot(t TestingT, values ...any) {
 func MatchStandaloneSnapshot(t TestingT, value any) {
 	t.Helper()
 
-	defaultSnap.WithTesting(t).matchStandaloneSnapshot(value)
+	defaultSnap.withTesting(t).matchStandaloneSnapshot(value)
 }
 
 // Skip Wrapper of testing.Skip
@@ -59,7 +59,7 @@ func MatchStandaloneSnapshot(t TestingT, value any) {
 func Skip(t TestingT, args ...any) {
 	t.Helper()
 
-	defaultSnap.WithTesting(t).trackSkip()
+	defaultSnap.withTesting(t).trackSkip()
 	t.Skip(args...)
 }
 
@@ -69,7 +69,7 @@ func Skip(t TestingT, args ...any) {
 func Skipf(t TestingT, format string, args ...any) {
 	t.Helper()
 
-	defaultSnap.WithTesting(t).trackSkip()
+	defaultSnap.withTesting(t).trackSkip()
 	t.Skipf(format, args...)
 }
 
@@ -79,7 +79,7 @@ func Skipf(t TestingT, format string, args ...any) {
 func SkipNow(t TestingT) {
 	t.Helper()
 
-	defaultSnap.WithTesting(t).trackSkip()
+	defaultSnap.withTesting(t).trackSkip()
 	t.SkipNow()
 }
 
