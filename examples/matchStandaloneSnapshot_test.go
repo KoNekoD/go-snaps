@@ -1,9 +1,8 @@
 package examples
 
 import (
-	"testing"
-
 	"github.com/gkampitakis/go-snaps/snaps"
+	"testing"
 )
 
 func TestMatchStandaloneSnapshot(t *testing.T) {

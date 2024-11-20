@@ -1,11 +1,10 @@
 package snaps
 
 import (
+	"github.com/gkampitakis/go-snaps/internal/test"
+	"github.com/gkampitakis/go-snaps/snaps/colors"
 	"strings"
 	"testing"
-
-	"github.com/gkampitakis/go-snaps/internal/colors"
-	"github.com/gkampitakis/go-snaps/internal/test"
 )
 
 var a = `Proin justo libero, pellentesque sit amet scelerisque ut, sollicitudin non tortor. 
@@ -76,7 +75,7 @@ func TestDiff(t *testing.T) {
 			test.Equal(t, "", diff)
 			test.Equal(t, -1, deleted)
 			test.Equal(t, -1, inserted)
-			test.Equal(t, "", prettyDiff(expected, received, "", -1))
+			test.Equal(t, "", PrettyDiff(expected, received, "", -1))
 		})
 
 		t.Run("multiline", func(t *testing.T) {
@@ -85,7 +84,7 @@ func TestDiff(t *testing.T) {
 			`
 			received := expected
 
-			if diff := prettyDiff(expected, received, "", -1); diff != "" {
+			if diff := PrettyDiff(expected, received, "", -1); diff != "" {
 				t.Errorf("found diff between same string %s", diff)
 			}
 		})
@@ -109,11 +108,11 @@ func TestDiff(t *testing.T) {
 			a := strings.Repeat("abcd", 20)
 			b := strings.Repeat("abcf", 20)
 
-			MatchSnapshot(t, prettyDiff(a, b, "snap/path", 10))
+			MatchSnapshot(t, PrettyDiff(a, b, "snap/path", 10))
 		})
 
 		t.Run("multiline diff", func(t *testing.T) {
-			MatchSnapshot(t, prettyDiff(a, b, "snap/path", 10))
+			MatchSnapshot(t, PrettyDiff(a, b, "snap/path", 10))
 		})
 	})
 
@@ -127,12 +126,12 @@ func TestDiff(t *testing.T) {
 			a := strings.Repeat("abcd", 20)
 			b := strings.Repeat("abcf", 20)
 
-			d := prettyDiff(a, b, "snap/path", 10)
+			d := PrettyDiff(a, b, "snap/path", 10)
 			MatchSnapshot(t, d)
 		})
 
 		t.Run("multiline diff", func(t *testing.T) {
-			MatchSnapshot(t, prettyDiff(a, b, "snap/path", 20))
+			MatchSnapshot(t, PrettyDiff(a, b, "snap/path", 20))
 		})
 	})
 
@@ -148,8 +147,8 @@ func TestDiff(t *testing.T) {
 			diff
 			`
 
-			MatchSnapshot(t, prettyDiff(a, b, "snap/path", 10))
-			MatchSnapshot(t, prettyDiff(b, a, "snap/path", 10))
+			MatchSnapshot(t, PrettyDiff(a, b, "snap/path", 10))
+			MatchSnapshot(t, PrettyDiff(b, a, "snap/path", 10))
 		})
 
 		t.Run("singleline", func(t *testing.T) {
@@ -157,10 +156,10 @@ func TestDiff(t *testing.T) {
 			b := "single line snap \n"
 			c := "single line snap\n"
 
-			MatchSnapshot(t, prettyDiff(a, b, "snap/path", 10))
-			MatchSnapshot(t, prettyDiff(a, b, "snap/path", 10))
-			MatchSnapshot(t, prettyDiff(a, c, "snap/path", 10))
-			MatchSnapshot(t, prettyDiff(c, a, "snap/path", 10))
+			MatchSnapshot(t, PrettyDiff(a, b, "snap/path", 10))
+			MatchSnapshot(t, PrettyDiff(a, b, "snap/path", 10))
+			MatchSnapshot(t, PrettyDiff(a, c, "snap/path", 10))
+			MatchSnapshot(t, PrettyDiff(c, a, "snap/path", 10))
 		})
 	})
 }

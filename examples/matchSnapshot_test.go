@@ -66,9 +66,7 @@ func TestMatchSnapshot(t *testing.T) {
 
 	t.Run("withConfig", func(t *testing.T) {
 		t.Run("should allow changing filename", func(t *testing.T) {
-			snaps.WithConfig(
-				snaps.Filename("custom_file"),
-			).MatchSnapshot(t, "snapshot data")
+			snaps.WithConfig(snaps.Filename("custom_file")).MatchSnapshot(t, "snapshot data")
 		})
 
 		t.Run("should allow changing dir", func(t *testing.T) {

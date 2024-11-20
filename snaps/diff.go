@@ -3,13 +3,14 @@ package snaps
 import (
 	"bytes"
 	"fmt"
+	"github.com/gkampitakis/go-snaps/snaps/colors"
+	"github.com/gkampitakis/go-snaps/snaps/diff"
+	"github.com/gkampitakis/go-snaps/snaps/symbols"
 	"io"
 	"strconv"
 	"strings"
 
 	"github.com/gkampitakis/go-diff/diffmatchpatch"
-	"github.com/gkampitakis/go-snaps/internal/colors"
-	"github.com/gkampitakis/go-snaps/internal/difflib"
 )
 
 const (
@@ -47,7 +48,7 @@ func shouldPrintHighlights(a, b string) bool {
 // Compare two sequences of lines; generate the delta as a unified diff.
 //
 // Unified diffs are a compact way of showing line changes and a few
-// lines of context. The number of context lines is set by default to three.
+// lines of context. The number of context lines is Set by default to three.
 //
 // getUnifiedDiff returns a diff string along with inserted and deleted number.
 func getUnifiedDiff(a, b string) (string, int, int) {
@@ -60,7 +61,7 @@ func getUnifiedDiff(a, b string) (string, int, int) {
 
 	s.Grow(len(a) + len(b))
 
-	m := difflib.NewMatcher(aLines, bLines)
+	m := diff.NewMatcher(aLines, bLines)
 	for _, g := range m.GetGroupedOpCodes(context) {
 		// aLines is a product of splitNewLines(), some items are just \"n"
 		// if change is less than 10 items don't print the range
@@ -72,7 +73,7 @@ func getUnifiedDiff(a, b string) (string, int, int) {
 			fallback := false
 			i1, i2, j1, j2 := c.I1, c.I2, c.J1, c.J2
 
-			if c.Tag == difflib.OpReplace {
+			if c.Tag == diff.OpReplace {
 				expected := strings.Join(bLines[j1:j2], "")
 				received := strings.Join(aLines[i1:i2], "")
 
@@ -88,10 +89,10 @@ func getUnifiedDiff(a, b string) (string, int, int) {
 				fallback = true
 			}
 
-			if c.Tag == difflib.OpEqual {
+			if c.Tag == diff.OpEqual {
 				for _, line := range aLines[i1:i2] {
 					if line == "\n" {
-						line = newLineSymbol + "\n"
+						line = symbols.NewLineSymbol + "\n"
 					}
 					colors.FprintEqual(&s, line)
 				}
@@ -100,14 +101,14 @@ func getUnifiedDiff(a, b string) (string, int, int) {
 			}
 
 			// no continue, if fallback == true we want both lines printed
-			if fallback || c.Tag == difflib.OpDelete {
+			if fallback || c.Tag == diff.OpDelete {
 				for _, line := range aLines[i1:i2] {
 					colors.FprintDelete(&s, line)
 					deleted++
 				}
 			}
 
-			if fallback || c.Tag == difflib.OpInsert {
+			if fallback || c.Tag == diff.OpInsert {
 				for _, line := range bLines[j1:j2] {
 					colors.FprintInsert(&s, line)
 					inserted++
@@ -119,10 +120,10 @@ func getUnifiedDiff(a, b string) (string, int, int) {
 	return s.String(), inserted, deleted
 }
 
-func printRange(w io.Writer, opcodes []difflib.OpCode) {
+func printRange(w io.Writer, opcodes []diff.OpCode) {
 	first, last := opcodes[0], opcodes[len(opcodes)-1]
-	range1 := difflib.FormatRangeUnified(first.I1, last.I2)
-	range2 := difflib.FormatRangeUnified(first.J1, last.J2)
+	range1 := diff.FormatRangeUnified(first.I1, last.I2)
+	range2 := diff.FormatRangeUnified(first.J1, last.J2)
 	colors.FprintRange(w, range1, range2)
 }
 
@@ -170,14 +171,14 @@ func singlelineDiff(expected, received string) (string, int, int) {
 		case diffDelete:
 			deleted++
 			if strings.HasSuffix(diff.Text, "\n") {
-				colors.FprintDeleteBold(a, diff.Text[:len(diff.Text)-1]+newLineSymbol)
+				colors.FprintDeleteBold(a, diff.Text[:len(diff.Text)-1]+symbols.NewLineSymbol)
 			} else {
 				colors.FprintDeleteBold(a, diff.Text)
 			}
 		case diffInsert:
 			inserted++
 			if strings.HasSuffix(diff.Text, "\n") {
-				colors.FprintInsertBold(b, diff.Text[:len(diff.Text)-1]+newLineSymbol)
+				colors.FprintInsertBold(b, diff.Text[:len(diff.Text)-1]+symbols.NewLineSymbol)
 			} else {
 				colors.FprintInsertBold(b, diff.Text)
 			}
@@ -238,7 +239,7 @@ func buildDiffReport(inserted, deleted int, diff, name string, line int) string 
 	return s.String()
 }
 
-func prettyDiff(expected, received, name string, line int) string {
+func PrettyDiff(expected, received, name string, line int) string {
 	if expected == received {
 		return ""
 	}

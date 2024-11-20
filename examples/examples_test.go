@@ -3,9 +3,8 @@ package examples
 import (
 	"flag"
 	"fmt"
-	"testing"
-
 	"github.com/gkampitakis/go-snaps/snaps"
+	"testing"
 )
 
 // You can use -update flag to control if you want to update the snapshots
@@ -13,7 +12,7 @@ import (
 var updateSnapshot = flag.Bool("update", false, "update snapshots flag")
 
 func TestUpdateWithFlag(t *testing.T) {
-	snaps := snaps.WithConfig(snaps.Update(*updateSnapshot))
+	config := snaps.WithConfig(snaps.Update(*updateSnapshot))
 
 	inputs := []string{
 		"lore ipsum dolor sit amet",
@@ -24,7 +23,7 @@ func TestUpdateWithFlag(t *testing.T) {
 
 	for i, input := range inputs {
 		t.Run(fmt.Sprintf("test - %d", i), func(t *testing.T) {
-			snaps.MatchSnapshot(t, input)
+			config.MatchSnapshot(t, input)
 		})
 	}
 }
