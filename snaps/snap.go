@@ -30,23 +30,20 @@ type TestingT interface {
 }
 
 var (
-	defaultSnap          = newSnap(defaultConfig(), nil)
-	defaultRegistry      = newSnapRegistry()
-	isCI                 = ciinfo.IsCI
-	updateVAR            = os.Getenv("UPDATE_SNAPS")
-	shouldClean          = updateVAR == "true" || updateVAR == "clean"
-	jsonOptions          = &jsonPretty.Options{SortKeys: true, Indent: " "}
-	endSequenceByteSlice = []byte(endSequence)
-	skippedMsg           = colors.Sprint(colors.Yellow, symbols.SkipSymbol+"Snapshot skipped")
-	addedMsg             = colors.Sprint(colors.Green, symbols.UpdateSymbol+"Snapshot added")
-	updatedMsg           = colors.Sprint(colors.Green, symbols.UpdateSymbol+"Snapshot updated")
-	errInvalidJSON       = errors.New("invalid json")
-	errSnapNotFound      = errors.New("snapshot not found")
+	defaultSnap     = newSnap(defaultConfig(), nil)
+	defaultRegistry = newSnapRegistry()
+	isCI            = ciinfo.IsCI
+	updateVAR       = os.Getenv("UPDATE_SNAPS")
+	jsonOptions     = &jsonPretty.Options{SortKeys: true, Indent: " "}
+	skippedMsg      = colors.Sprint(colors.Yellow, symbols.SkipSymbol+"Snapshot skipped")
+	addedMsg        = colors.Sprint(colors.Green, symbols.UpdateSymbol+"Snapshot added")
+	updatedMsg      = colors.Sprint(colors.Green, symbols.UpdateSymbol+"Snapshot updated")
+	errInvalidJSON  = errors.New("invalid json")
+	errSnapNotFound = errors.New("snapshot not found")
 )
 
 const (
-	endSequence = "---"
-	snapsExt    = ".snap"
+	snapsExt = ".snap"
 )
 
 const (
@@ -89,126 +86,35 @@ func (s *snap) WithTesting(t TestingT) *snap {
 	return s
 }
 
-func (s *snap) matchStandaloneSnapshot(value any) {
+func (s *snap) matchStandaloneSnapshot(v any) {
 	s.t.Helper()
-
-	genericPathSnap, genericSnapPathRel := s.snapshotPath()
-	snapPath, snapPathRel := s.getTestIdFromRegistry(genericPathSnap, genericSnapPathRel)
-	s.t.Cleanup(func() { s.resetSnapPathInRegistry(genericPathSnap) })
-
-	snapshot := valuePretty.Sprint(value)
-	prevSnapshot, err := s.getPrevStandaloneSnapshot(snapPath)
-	if errors.Is(err, errSnapNotFound) {
-		if isCI {
-			s.handleError(err)
-			return
-		}
-
-		err := s.upsertStandaloneSnapshot(snapshot, snapPath)
-		if err != nil {
-			s.handleError(err)
-			return
-		}
-
-		s.t.Log(addedMsg)
-		s.registerTestEvent(added)
-		return
-	}
-	if err != nil {
-		s.handleError(err)
-		return
-	}
-
-	prettyDiff := PrettyDiff(prevSnapshot, snapshot, snapPathRel, 1)
-	if prettyDiff == "" {
-		s.registerTestEvent(passed)
-		return
-	}
-
-	if !s.shouldUpdate() {
-		s.handleError(prettyDiff)
-		return
-	}
-
-	if err = s.upsertStandaloneSnapshot(snapshot, snapPath); err != nil {
-		s.handleError(err)
-		return
-	}
-
-	s.t.Log(updatedMsg)
-	s.registerTestEvent(updated)
+	snapPath, snapPathRel := s.prepare()
+	s.handleSnapshot(valuePretty.Sprint(v), snapPath, snapPathRel)
 }
 
-func (s *snap) matchSnapshot(values ...any) {
+func (s *snap) matchSnapshot(v ...any) {
 	s.t.Helper()
+	snapPath, snapPathRel := s.prepare()
 
-	if len(values) == 0 {
+	if len(v) == 0 {
 		s.t.Log(colors.Sprint(colors.Yellow, "[warning] MatchSnapshot call without params\n"))
 		return
 	}
 
-	genericPathSnap, genericSnapPathRel := s.snapshotPath()
-	snapPath, snapPathRel := s.getTestIdFromRegistry(genericPathSnap, genericSnapPathRel)
-
-	s.t.Cleanup(func() { s.resetSnapPathInRegistry(genericPathSnap) })
-
-	snapshot := s.takeSnapshot(values)
-	prevSnapshot, err := s.getPrevStandaloneSnapshot(snapPath)
-	if errors.Is(err, errSnapNotFound) {
-		if isCI {
-			s.handleError(err)
-			return
-		}
-
-		err := s.upsertStandaloneSnapshot(snapshot, snapPath)
-		if err != nil {
-			s.handleError(err)
-			return
-		}
-
-		s.t.Log(addedMsg)
-		s.registerTestEvent(added)
-		return
-	}
-	if err != nil {
-		s.handleError(err)
-		return
-	}
-
-	prettyDiff := PrettyDiff(s.unescapeEndChars(prevSnapshot), s.unescapeEndChars(snapshot), snapPathRel, 1)
-	if prettyDiff == "" {
-		s.registerTestEvent(passed)
-		return
-	}
-
-	if !s.shouldUpdate() {
-		s.handleError(prettyDiff)
-		return
-	}
-
-	if err = s.upsertStandaloneSnapshot(snapshot, snapPath); err != nil {
-		s.handleError(err)
-		return
-	}
-
-	s.t.Log(updatedMsg)
-	s.registerTestEvent(updated)
+	s.handleSnapshot(s.takeSnapshot(v), snapPath, snapPathRel)
 }
 
 func (s *snap) matchJson(input any, matchers ...matchers.JsonMatcher) {
 	s.t.Helper()
+	snapPath, snapPathRel := s.prepare()
 
-	genericPathSnap, genericSnapPathRel := s.snapshotPath()
-	snapPath, snapPathRel := s.getTestIdFromRegistry(genericPathSnap, genericSnapPathRel)
-	s.t.Cleanup(func() { s.resetSnapPathInRegistry(genericPathSnap) })
-
-	j, err := s.validateJson(input)
+	v, err := s.validateJson(input)
 	if err != nil {
 		s.handleError(err)
 		return
 	}
 
-	j, matchersErrors := s.applyJsonMatchers(j, matchers...)
+	v, matchersErrors := s.applyJsonMatchers(v, matchers...)
 	if len(matchersErrors) > 0 {
 		sb := strings.Builder{}
 
@@ -222,7 +128,17 @@ func (s *snap) matchJson(input any, matchers ...matchers.JsonMatcher) {
 		return
 	}
 
-	snapshot := s.takeJsonSnapshot(j)
+	s.handleSnapshot(s.takeJsonSnapshot(v), snapPath, snapPathRel)
+}
+
+func (s *snap) prepare() (string, string) {
+	genericPathSnap, genericSnapPathRel := s.snapshotPath()
+	snapPath, snapPathRel := s.getTestIdFromRegistry(genericPathSnap, genericSnapPathRel)
+	s.t.Cleanup(func() { s.resetSnapPathInRegistry(genericPathSnap) })
+	return snapPath, snapPathRel
+}
+
+func (s *snap) handleSnapshot(snapshot, snapPath, snapPathRel string) {
 	prevSnapshot, err := s.getPrevStandaloneSnapshot(snapPath)
 	if errors.Is(err, errSnapNotFound) {
 		if isCI {
@@ -265,26 +181,6 @@ func (s *snap) matchJson(input any, matchers ...matchers.JsonMatcher) {
 	s.registerTestEvent(updated)
 }
 
-func (s *snap) unescapeEndChars(inputString string) string {
-	ss := strings.Split(inputString, "\n")
-	for idx, s := range ss {
-		if s == "/-/-/-/" {
-			ss[idx] = endSequence
-		}
-	}
-	return strings.Join(ss, "\n")
-}
-
-func (s *snap) escapeEndChars(inputString string) string {
-	ss := strings.Split(inputString, "\n")
-	for idx, s := range ss {
-		if s == endSequence {
-			ss[idx] = "/-/-/-/"
-		}
-	}
-	return strings.Join(ss, "\n")
-}
-
 func (s *snap) takeSnapshot(objects []any) string {
 	snapshots := make([]string, len(objects))
 
@@ -292,7 +188,7 @@ func (s *snap) takeSnapshot(objects []any) string {
 		snapshots[i] = valuePretty.Sprint(object)
 	}
 
-	return s.escapeEndChars(strings.Join(snapshots, "\n"))
+	return strings.Join(snapshots, "\n")
 }
 
 func (s *snap) snapshotPath() (string, string) {
@@ -348,10 +244,8 @@ func (s *snap) shouldUpdate() bool {
 	if isCI {
 		return false
 	}
-
-	configUpdate := s.c.Update()
-	if configUpdate != nil {
-		return *configUpdate
+	if u := s.c.Update(); u != nil {
+		return *u
 	}
 
 	return "true" == updateVAR
@@ -401,7 +295,6 @@ func (s *snap) getPrevStandaloneSnapshot(snapPath string) (string, error) {
 
 func (s *snap) trackSkip() {
 	s.t.Helper()
-
 	s.t.Log(skippedMsg)
 	s.addSkippedTest(s.t.Name())
 }
@@ -450,7 +343,6 @@ func (s *snap) registerTestEvent(event uint8) {
 
 func (s *snap) getTestIdFromRegistry(snapPath, snapPathRel string) (string, string) {
 	s.registry.registryMutex.Lock()
-
 	s.registry.registryRunning[snapPath]++
 	s.registry.registryCleanup[snapPath]++
 	c := s.registry.registryRunning[snapPath]

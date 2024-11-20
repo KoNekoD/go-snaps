@@ -528,11 +528,11 @@ func TestSnapshotPath(t *testing.T) {
 		test.HasSuffix(
 			t,
 			snapPath,
-			filepath.FromSlash("/snaps/__snapshots__/my_test_%d.snap"),
+			filepath.FromSlash("/snaps/__snapshots__/mock-name_%d.snap"),
 		)
 		test.Equal(
 			t,
-			filepath.FromSlash("__snapshots__/my_test_%d.snap"),
+			filepath.FromSlash("__snapshots__/mock-name_%d.snap"),
 			snapPathRel,
 		)
 	})
@@ -543,11 +543,11 @@ func TestSnapshotPath(t *testing.T) {
 		test.HasSuffix(
 			t,
 			snapPath,
-			filepath.FromSlash("/snaps/__snapshots__/TestFunction_my_test_%d.snap"),
+			filepath.FromSlash("/snaps/__snapshots__/TestFunction_mock-name_%d.snap"),
 		)
 		test.Equal(
 			t,
-			filepath.FromSlash("__snapshots__/TestFunction_my_test_%d.snap"),
+			filepath.FromSlash("__snapshots__/TestFunction_mock-name_%d.snap"),
 			snapPathRel,
 		)
 	})
@@ -780,9 +780,6 @@ func TestMatchSnapshot(t *testing.T) {
 			// shift
 			printerExpectedCalls = printerExpectedCalls[1:]
 		}
-
-		// First call for creating the snapshot ( adding ending chars inside the diff )
-		MatchSnapshot(mockT, 10, "hello world----", endSequence)
 
 		// Resetting registry to emulate the same MatchSnapshot call
 		defaultSnap.registry = newSnapRegistry()
