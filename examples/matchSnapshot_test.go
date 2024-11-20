@@ -13,8 +13,6 @@ import (
 func TestMain(m *testing.M) {
 	v := m.Run()
 
-	snaps.Clean(m)
-
 	os.Exit(v)
 }
 

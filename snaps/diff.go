@@ -248,6 +248,6 @@ func PrettyDiff(expected, received, name string, line int) string {
 		differ = singlelineDiff
 	}
 
-	diff, i, d := differ(expected, received)
-	return buildDiffReport(i, d, diff, name, line)
+	finalDiff, i, d := differ(expected, received)
+	return buildDiffReport(i, d, finalDiff, name, line)
 }

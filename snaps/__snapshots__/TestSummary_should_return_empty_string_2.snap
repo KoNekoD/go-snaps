@@ -1,9 +1,0 @@
-
-[1;38;5;255mSnapshot Summary[0m
-
-[33;1m
-› 1 snapshot file obsolete
-[0m[2m  ↳  • test0.snap
-[0m[2m
-To remove it, re-run tests with `UPDATE_SNAPS=clean go test ./...`
-[0m
