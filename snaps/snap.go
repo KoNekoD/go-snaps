@@ -193,7 +193,7 @@ func (s *snap) handleSnapshot(actualSerializedSnapshot string) {
 }
 
 func (s *snap) snapshotPath() (string, string) {
-	callerFilename := s.baseCaller(3) //  skips current func, the wrapper match* and the exported Match* func
+	callerFilename := s.baseCaller(4) //  skips current func, the wrapper match* and the exported Match* func
 	dir := s.c.SnapsDir()
 	if !filepath.IsAbs(dir) {
 		dir = filepath.Join(filepath.Dir(callerFilename), s.c.SnapsDir())
