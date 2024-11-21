@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/KoNekoD/diff-color/pkg/diff"
 	"github.com/KoNekoD/go-snaps/snaps/colors"
 	"github.com/KoNekoD/go-snaps/snaps/matchers"
 	"github.com/KoNekoD/go-snaps/snaps/symbols"
@@ -146,10 +147,16 @@ func (s *snap) handleSnapshot(actualSerializedSnapshot string) {
 	}
 	savedSerializedSnapshot := string(fileBytes)
 
+	// savedSerializedSnapshot ( Unmarshall and Marshall again )
+	var savedSnapshot map[string]interface{}
+	if err := json.Unmarshal([]byte(savedSerializedSnapshot), &savedSnapshot); err == nil { // is json's related
+		savedSerializedSnapshot = s.snapshotSerializer.takeJsonSnapshot([]byte(savedSerializedSnapshot))
+	}
+
 	expected := savedSerializedSnapshot
 	received := actualSerializedSnapshot
 
-	successfullyDeserialized := true
+	successfullyDeserialized := true // json's related
 	var savedSnapshotRaw map[string]interface{}
 	var actualSnapshotRaw map[string]interface{}
 	if err := json.Unmarshal([]byte(savedSerializedSnapshot), &savedSnapshotRaw); err != nil {
@@ -166,6 +173,7 @@ func (s *snap) handleSnapshot(actualSerializedSnapshot string) {
 			differ = singlelineDiff
 		}
 		finalDiff, i, d := differ(expected, received)
+		_ = diff.Diff(expected, received) // TODO: Add possibility to change diff printer, now alternative is disabled
 		prettyDiff = buildDiffReport(i, d, finalDiff, snapPathRel, 1)
 	}
 	if prettyDiff == "" {
