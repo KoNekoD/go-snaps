@@ -120,15 +120,11 @@ func (s *snap) matchJson(input any, matchers ...matchers.JsonMatcher) {
 	s.handleSnapshot(s.snapshotSerializer.takeJsonSnapshot(v))
 }
 
-func (s *snap) prepare() (string, string) {
+func (s *snap) handleSnapshot(actualSerializedSnapshot string) {
+	s.t.Helper()
 	genericPathSnap, genericSnapPathRel := s.snapshotPath()
 	snapPath, snapPathRel := s.getTestIdFromRegistry(genericPathSnap, genericSnapPathRel)
 	s.t.Cleanup(func() { s.resetSnapPathInRegistry(genericPathSnap) })
-	return snapPath, snapPathRel
-}
-
-func (s *snap) handleSnapshot(actualSerializedSnapshot string) {
-	snapPath, snapPathRel := s.prepare()
 
 	fileBytes, err := os.ReadFile(snapPath)
 	if err != nil {
@@ -193,6 +189,7 @@ func (s *snap) handleSnapshot(actualSerializedSnapshot string) {
 }
 
 func (s *snap) snapshotPath() (string, string) {
+	s.t.Helper()
 	callerFilename := s.baseCaller(4) //  skips current func, the wrapper match* and the exported Match* func
 	dir := s.c.SnapsDir()
 	if !filepath.IsAbs(dir) {
