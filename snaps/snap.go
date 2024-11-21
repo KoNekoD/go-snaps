@@ -82,7 +82,7 @@ func (s *snap) withTesting(t TestingT) *snap {
 
 func (s *snap) matchStandaloneSnapshot(v any) {
 	s.t.Helper()
-	handleSnapshot(s, v, s.snapshotSerializer.takeSnapshot(v))
+	s.handleSnapshot(s.snapshotSerializer.takeSnapshot(v))
 }
 
 func (s *snap) matchSnapshot(v ...any) {
@@ -93,7 +93,7 @@ func (s *snap) matchSnapshot(v ...any) {
 		return
 	}
 
-	handleSnapshot(s, v, s.snapshotSerializer.takeSliceSnapshot(v))
+	s.handleSnapshot(s.snapshotSerializer.takeSliceSnapshot(v))
 }
 
 func (s *snap) matchJson(input any, matchers ...matchers.JsonMatcher) {
@@ -116,7 +116,7 @@ func (s *snap) matchJson(input any, matchers ...matchers.JsonMatcher) {
 		return
 	}
 
-	handleSnapshot(s, input, s.snapshotSerializer.takeJsonSnapshot(v))
+	s.handleSnapshot(s.snapshotSerializer.takeJsonSnapshot(v))
 }
 
 func (s *snap) prepare() (string, string) {
@@ -126,7 +126,7 @@ func (s *snap) prepare() (string, string) {
 	return snapPath, snapPathRel
 }
 
-func handleSnapshot[T any](s *snap, actualSnapshot T, actualSerializedSnapshot string) {
+func (s *snap) handleSnapshot(actualSerializedSnapshot string) {
 	snapPath, snapPathRel := s.prepare()
 
 	fileBytes, err := os.ReadFile(snapPath)
@@ -149,17 +149,18 @@ func handleSnapshot[T any](s *snap, actualSnapshot T, actualSerializedSnapshot s
 	expected := savedSerializedSnapshot
 	received := actualSerializedSnapshot
 
-	var savedSnapshot T
 	successfullyDeserialized := true
-	if err := json.Unmarshal([]byte(savedSerializedSnapshot), &savedSnapshot); err != nil {
+	var savedSnapshotRaw map[string]interface{}
+	var actualSnapshotRaw map[string]interface{}
+	if err := json.Unmarshal([]byte(savedSerializedSnapshot), &savedSnapshotRaw); err != nil {
 		successfullyDeserialized = false
 	}
-	if err := json.Unmarshal([]byte(actualSerializedSnapshot), &actualSnapshot); err != nil {
+	if err := json.Unmarshal([]byte(actualSerializedSnapshot), &actualSnapshotRaw); err != nil {
 		successfullyDeserialized = false
 	}
 
 	prettyDiff := ""
-	if expected != received && successfullyDeserialized && !reflect.DeepEqual(savedSnapshot, actualSnapshot) {
+	if expected != received && successfullyDeserialized && !reflect.DeepEqual(savedSnapshotRaw, actualSnapshotRaw) {
 		differ := getUnifiedDiff
 		if shouldPrintHighlights(expected, received) {
 			differ = singlelineDiff
