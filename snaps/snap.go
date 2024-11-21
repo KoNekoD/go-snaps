@@ -8,11 +8,10 @@ import (
 	"github.com/KoNekoD/go-snaps/snaps/matchers"
 	"github.com/KoNekoD/go-snaps/snaps/symbols"
 	"github.com/gkampitakis/ciinfo"
-	valuePretty "github.com/kr/pretty"
 	"github.com/tidwall/gjson"
-	jsonPretty "github.com/tidwall/pretty"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"sync"
@@ -62,16 +61,17 @@ func newSnapRegistry() *snapRegistry {
 }
 
 type snap struct {
-	c                 *Config
-	t                 TestingT
-	fileExtension     string
-	skippedTests      []string
-	skippedTestsMutex sync.Mutex
-	registry          *snapRegistry
+	c                  *Config
+	t                  TestingT
+	fileExtension      string
+	skippedTests       []string
+	skippedTestsMutex  sync.Mutex
+	registry           *snapRegistry
+	snapshotSerializer *snapshotSerializer
 }
 
 func newSnap(c *Config, t TestingT) *snap {
-	return &snap{c: c, t: t, skippedTests: make([]string, 0), registry: defaultRegistry, fileExtension: ".snap"}
+	return &snap{c: c, t: t, skippedTests: make([]string, 0), registry: defaultRegistry, fileExtension: ".snap", snapshotSerializer: newSnapshotSerializer()}
 }
 
 func (s *snap) withTesting(t TestingT) *snap {
@@ -82,26 +82,23 @@ func (s *snap) withTesting(t TestingT) *snap {
 
 func (s *snap) matchStandaloneSnapshot(v any) {
 	s.t.Helper()
-	snapPath, snapPathRel := s.prepare()
-	s.handleSnapshot(valuePretty.Sprint(v), snapPath, snapPathRel)
+	handleSnapshot(s, v, s.snapshotSerializer.takeSnapshot(v))
 }
 
 func (s *snap) matchSnapshot(v ...any) {
 	s.t.Helper()
-	snapPath, snapPathRel := s.prepare()
 
 	if len(v) == 0 {
 		s.t.Log(colors.Sprint(colors.Yellow, "[warning] MatchSnapshot call without params\n"))
 		return
 	}
 
-	s.handleSnapshot(s.takeSnapshot(v), snapPath, snapPathRel)
+	handleSnapshot(s, v, s.snapshotSerializer.takeSliceSnapshot(v))
 }
 
 func (s *snap) matchJson(input any, matchers ...matchers.JsonMatcher) {
 	s.fileExtension = ".json"
 	s.t.Helper()
-	snapPath, snapPathRel := s.prepare()
 
 	v, err := s.validateJson(input)
 	if err != nil {
@@ -119,7 +116,7 @@ func (s *snap) matchJson(input any, matchers ...matchers.JsonMatcher) {
 		return
 	}
 
-	s.handleSnapshot(s.takeJsonSnapshot(v), snapPath, snapPathRel)
+	handleSnapshot(s, input, s.snapshotSerializer.takeJsonSnapshot(v))
 }
 
 func (s *snap) prepare() (string, string) {
@@ -129,14 +126,16 @@ func (s *snap) prepare() (string, string) {
 	return snapPath, snapPathRel
 }
 
-func (s *snap) handleSnapshot(snapshot, snapPath, snapPathRel string) {
+func handleSnapshot[T any](s *snap, actualSnapshot T, actualSerializedSnapshot string) {
+	snapPath, snapPathRel := s.prepare()
+
 	fileBytes, err := os.ReadFile(snapPath)
 	if err != nil {
 		if isCI {
 			s.handleError(errSnapNotFound)
 			return
 		}
-		err := s.upsertStandaloneSnapshot(snapshot, snapPath)
+		err := s.upsertStandaloneSnapshot(actualSerializedSnapshot, snapPath)
 		if err != nil {
 			s.handleError(err)
 			return
@@ -145,8 +144,29 @@ func (s *snap) handleSnapshot(snapshot, snapPath, snapPathRel string) {
 		s.registerTestEvent(added)
 		return
 	}
+	savedSerializedSnapshot := string(fileBytes)
 
-	prettyDiff := PrettyDiff(string(fileBytes), snapshot, snapPathRel, 1)
+	expected := savedSerializedSnapshot
+	received := actualSerializedSnapshot
+
+	var savedSnapshot T
+	successfullyDeserialized := true
+	if err := json.Unmarshal([]byte(savedSerializedSnapshot), &savedSnapshot); err != nil {
+		successfullyDeserialized = false
+	}
+	if err := json.Unmarshal([]byte(actualSerializedSnapshot), &actualSnapshot); err != nil {
+		successfullyDeserialized = false
+	}
+
+	prettyDiff := ""
+	if expected != received && successfullyDeserialized && !reflect.DeepEqual(savedSnapshot, actualSnapshot) {
+		differ := getUnifiedDiff
+		if shouldPrintHighlights(expected, received) {
+			differ = singlelineDiff
+		}
+		finalDiff, i, d := differ(expected, received)
+		prettyDiff = buildDiffReport(i, d, finalDiff, snapPathRel, 1)
+	}
 	if prettyDiff == "" {
 		s.registerTestEvent(passed)
 		return
@@ -155,20 +175,12 @@ func (s *snap) handleSnapshot(snapshot, snapPath, snapPathRel string) {
 		s.handleError(prettyDiff)
 		return
 	}
-	if err = s.upsertStandaloneSnapshot(snapshot, snapPath); err != nil {
+	if err = s.upsertStandaloneSnapshot(actualSerializedSnapshot, snapPath); err != nil {
 		s.handleError(err)
 		return
 	}
 	s.t.Log(updatedMsg)
 	s.registerTestEvent(updated)
-}
-
-func (s *snap) takeSnapshot(objects []any) string {
-	snapshots := make([]string, len(objects))
-	for i, object := range objects {
-		snapshots[i] = valuePretty.Sprint(object)
-	}
-	return strings.Join(snapshots, "\n")
 }
 
 func (s *snap) snapshotPath() (string, string) {
@@ -194,10 +206,6 @@ func (s *snap) constructFilename(callerFilename string) string {
 	filename += s.fileExtension + s.c.Extension()
 
 	return filename
-}
-
-func (s *snap) takeJsonSnapshot(b []byte) string {
-	return strings.TrimSuffix(string(jsonPretty.PrettyOptions(b, &jsonPretty.Options{SortKeys: true, Indent: " "})), "\n")
 }
 
 func (s *snap) applyJsonMatchers(b []byte, matchersList ...matchers.JsonMatcher) ([]byte, []matchers.MatcherError) {

@@ -238,16 +238,3 @@ func buildDiffReport(inserted, deleted int, diff, name string, line int) string 
 
 	return s.String()
 }
-
-func PrettyDiff(expected, received, name string, line int) string {
-	if expected == received {
-		return ""
-	}
-	differ := getUnifiedDiff
-	if shouldPrintHighlights(expected, received) {
-		differ = singlelineDiff
-	}
-
-	finalDiff, i, d := differ(expected, received)
-	return buildDiffReport(i, d, finalDiff, name, line)
-}

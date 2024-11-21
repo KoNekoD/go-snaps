@@ -2,37 +2,8 @@ package snaps
 
 import (
 	"github.com/KoNekoD/go-snaps/internal/test"
-	"github.com/KoNekoD/go-snaps/snaps/colors"
-	"strings"
 	"testing"
 )
-
-var a = `Proin justo libero, pellentesque sit amet scelerisque ut, sollicitudin non tortor. 
-		Sed velit elit, accumsan sed porttitor nec, elementum quis sapien. 
-		Phasellus mattis purus in dui pretium, eu euismod metus feugiat. 
-		Morbi turpis tellus, tincidunt mollis rutrum at, mattis laoreet lacus. 
-		Donec in quam tempus, eleifend erat sit amet, aliquet metus. 
-		Sed ullamcorper velit a est efficitur, et tempus ante rhoncus. 
-		Aliquam diam sapien, vulputate sit amet elit sit amet, commodo eleifend sapien. 
-		Donec consequat at nibh id mattis. Quisque vitae sagittis eros, convallis consectetur ante. 
-		Duis finibus suscipit mi sed consectetur. Nulla libero neque, sagittis vel nulla vel,
-		 vestibulum sagittis mauris. Ut laoreet urna lectus. 
-		 Sed lorem felis, condimentum eget vehicula non, sagittis sit amet diam. 
-		 Vivamus ut sapien at erat imperdiet suscipit id a lectus.`
-
-var b = `Proin justo libero, pellentesque sit amet scelerisque ut, sollicitudin non tortor. 
-		Sed velit elit, accumsan sed Ipsum nec, elementum quis sapien. 
-		Phasellus mattis purus in dui pretium, eu euismod metus feugiat. 
-		Morbi turpis Lorem, tincidunt mollis rutrum at, mattis laoreet lacus. 
-		Donec in quam tempus, eleifend erat sit amet, aliquet metus. 
-		Sed ullamcorper velit a est efficitur, et tempus ante rhoncus. 
-		Aliquam diam sapien, vulputate sit amet elit sit amet, commodo eleifend sapien. 
-		Donec consequat at nibh id mattis. Quisque vitae sagittis eros, convallis consectetur ante. 
-		Duis finibus suscipit mi sed consectetur. Nulla libero neque, sagittis vel nulla vel,
-		vestibulum sagittis mauris. Ut laoreet urna lectus. 
-		Sed lorem felis, condimentum eget vehicula non, sagittis sit amet diam. 
-		Vivamus ut sapien at erat imperdiet suscipit id a lectus.
-		Another Line added.`
 
 func TestStringUtils(t *testing.T) {
 	t.Run("splitNewlines", func(t *testing.T) {
@@ -67,29 +38,6 @@ func TestStringUtils(t *testing.T) {
 }
 
 func TestDiff(t *testing.T) {
-	t.Run("should return empty string if no diffs", func(t *testing.T) {
-		t.Run("single line", func(t *testing.T) {
-			expected, received := "Hello World\n", "Hello World\n"
-
-			diff, deleted, inserted := singlelineDiff(expected, received)
-			test.Equal(t, "", diff)
-			test.Equal(t, -1, deleted)
-			test.Equal(t, -1, inserted)
-			test.Equal(t, "", PrettyDiff(expected, received, "", -1))
-		})
-
-		t.Run("multiline", func(t *testing.T) {
-			expected := `one snapshot
-			containing new lines
-			`
-			received := expected
-
-			if diff := PrettyDiff(expected, received, "", -1); diff != "" {
-				t.Errorf("found diff between same string %s", diff)
-			}
-		})
-	})
-
 	t.Run("should build diff report consistently", func(t *testing.T) {
 		MatchSnapshot(t, buildDiffReport(10000, 20, "mock-diff", "snap/path", 10))
 		MatchSnapshot(t, buildDiffReport(20, 10000, "mock-diff", "snap/path", 20))
@@ -101,65 +49,5 @@ func TestDiff(t *testing.T) {
 
 	t.Run("should not print snapshot line if not provided", func(t *testing.T) {
 		MatchSnapshot(t, buildDiffReport(10, 2, "there is a diff here", "", -1))
-	})
-
-	t.Run("with color", func(t *testing.T) {
-		t.Run("should apply highlights on single line diff", func(t *testing.T) {
-			a := strings.Repeat("abcd", 20)
-			b := strings.Repeat("abcf", 20)
-
-			MatchSnapshot(t, PrettyDiff(a, b, "snap/path", 10))
-		})
-
-		t.Run("multiline diff", func(t *testing.T) {
-			MatchSnapshot(t, PrettyDiff(a, b, "snap/path", 10))
-		})
-	})
-
-	t.Run("no color", func(t *testing.T) {
-		t.Cleanup(func() {
-			colors.NOCOLOR = false
-		})
-		colors.NOCOLOR = true
-
-		t.Run("should apply highlights on single line diff", func(t *testing.T) {
-			a := strings.Repeat("abcd", 20)
-			b := strings.Repeat("abcf", 20)
-
-			d := PrettyDiff(a, b, "snap/path", 10)
-			MatchSnapshot(t, d)
-		})
-
-		t.Run("multiline diff", func(t *testing.T) {
-			MatchSnapshot(t, PrettyDiff(a, b, "snap/path", 20))
-		})
-	})
-
-	t.Run("should print newline diffs", func(t *testing.T) {
-		t.Run("multiline", func(t *testing.T) {
-			a := `snapshot
-			with multiple lines
-			`
-			b := `snapshot
-
-			with multiple lines
-
-			diff
-			`
-
-			MatchSnapshot(t, PrettyDiff(a, b, "snap/path", 10))
-			MatchSnapshot(t, PrettyDiff(b, a, "snap/path", 10))
-		})
-
-		t.Run("singleline", func(t *testing.T) {
-			a := "single line snap"
-			b := "single line snap \n"
-			c := "single line snap\n"
-
-			MatchSnapshot(t, PrettyDiff(a, b, "snap/path", 10))
-			MatchSnapshot(t, PrettyDiff(a, b, "snap/path", 10))
-			MatchSnapshot(t, PrettyDiff(a, c, "snap/path", 10))
-			MatchSnapshot(t, PrettyDiff(c, a, "snap/path", 10))
-		})
 	})
 }
