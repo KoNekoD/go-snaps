@@ -6,14 +6,16 @@ import (
 	"strings"
 )
 
-type snapshotSerializer struct{}
+type snapshotSerializer struct {
+	c *Config
+}
 
-func newSnapshotSerializer() *snapshotSerializer {
-	return &snapshotSerializer{}
+func newSnapshotSerializer(c *Config) *snapshotSerializer {
+	return &snapshotSerializer{c: c}
 }
 
 func (s *snapshotSerializer) takeJsonSnapshot(b []byte) string {
-	return strings.TrimSuffix(string(jsonPretty.PrettyOptions(b, &jsonPretty.Options{SortKeys: true, Indent: " "})), "\n")
+	return strings.TrimSuffix(string(jsonPretty.PrettyOptions(b, &jsonPretty.Options{SortKeys: s.c.SortProperties(), Indent: " "})), "\n")
 }
 
 func (s *snapshotSerializer) takeSnapshot(object any) string {

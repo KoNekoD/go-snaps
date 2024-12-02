@@ -1,10 +1,11 @@
 package snaps
 
 type Config struct {
-	filename  string
-	snapsDir  string
-	extension string
-	update    *bool
+	filename       string
+	snapsDir       string
+	extension      string
+	update         *bool
+	sortProperties bool
 }
 
 func defaultConfig() *Config { return &Config{snapsDir: "__snapshots__"} }
@@ -16,6 +17,8 @@ func (c *Config) SnapsDir() string { return c.snapsDir }
 func (c *Config) Extension() string { return c.extension }
 
 func (c *Config) Update() *bool { return c.update }
+
+func (c *Config) SortProperties() bool { return c.sortProperties }
 
 // WithConfig Create snaps with configuration
 //
@@ -56,3 +59,8 @@ func Dir(dir string) func(*Config) { return func(c *Config) { c.snapsDir = dir }
 // Note: even if you specify a different extension the file still contain .snap
 // e.g. if you specify .txt the file will be .snap.txt
 func Ext(ext string) func(*Config) { return func(c *Config) { c.extension = ext } }
+
+// SortProperties sort properties in snapshots
+//
+// default: false
+func SortProperties() func(*Config) { return func(c *Config) { c.sortProperties = true } }

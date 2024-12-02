@@ -72,7 +72,7 @@ type snap struct {
 }
 
 func newSnap(c *Config, t TestingT) *snap {
-	return &snap{c: c, t: t, skippedTests: make([]string, 0), registry: defaultRegistry, fileExtension: ".snap", snapshotSerializer: newSnapshotSerializer()}
+	return &snap{c: c, t: t, skippedTests: make([]string, 0), registry: defaultRegistry, fileExtension: ".snap", snapshotSerializer: newSnapshotSerializer(c)}
 }
 
 func (s *snap) withTesting(t TestingT) *snap {
