@@ -275,3 +275,17 @@ func TestMatchFail(t *testing.T) {
 
 	MatchJSON(t, u)
 }
+
+func TestMatchUnorderedList(t *testing.T) {
+	keys := make([]string, 0)
+
+	keysMap := map[string]string{"1": "1", "2": "2", "3": "3", "4": "4", "5": "5", "6": "6"}
+
+	for key := range keysMap {
+		keys = append(keys, key)
+	}
+
+	MatchJSON(t, struct {
+		Keys []string `json:"keys"`
+	}{Keys: keys})
+}
