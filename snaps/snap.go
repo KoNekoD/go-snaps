@@ -163,7 +163,7 @@ func (s *snap) handleSnapshot(actualSerializedSnapshot string) {
 	}
 
 	prettyDiff := ""
-	if expected != received && successfullyDeserialized && !reflect.DeepEqual(savedSnapshotRaw, actualSnapshotRaw) {
+	if expected != received && !(reflect.DeepEqual(savedSnapshotRaw, actualSnapshotRaw) && successfullyDeserialized) {
 		differ := getUnifiedDiff
 		if shouldPrintHighlights(expected, received) {
 			differ = singlelineDiff
